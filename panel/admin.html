@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>PANEL ADMIN</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;600&display=swap');
+body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow:hidden;height:100dvh;user-select:none}
+#bgVid{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none}
+#bgOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,15,0.65);z-index:0;pointer-events:none}
+.scr{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;display:none;flex-direction:column}
+.scr.act{display:flex}
+#logScr{justify-content:center;align-items:center}
+.lb{text-align:center;width:88%;max-width:360px;padding:30px 20px;border:1px solid #ff224466;border-radius:14px;background:linear-gradient(135deg,rgba(255,34,68,.03),rgba(0,0,0,.9));box-shadow:0 0 60px rgba(255,34,68,.05),inset 0 0 60px rgba(255,34,68,.02)}
+.lb h1{font-family:'Orbitron',sans-serif;font-size:6vw;color:#ff2244;text-shadow:0 0 30px rgba(255,34,68,.4),0 0 80px rgba(255,34,68,.1)}@media(min-width:500px){.lb h1{font-size:28px}}
+.lb .s{color:#ff224488;font-size:9px;margin:4px 0 24px;letter-spacing:3px}
+.lb input{width:100%;padding:14px;background:#0d0d0d;border:1px solid #ff224433;border-radius:8px;color:#ff2244;font-family:'Fira Code',monospace;font-size:15px;outline:none;margin-bottom:12px;text-align:center;letter-spacing:4px}
+.lb input:focus{border-color:#ff2244;box-shadow:0 0 20px rgba(255,34,68,.15)}
+.lb button{width:100%;padding:14px;background:transparent;border:1px solid #ff2244;border-radius:8px;color:#ff2244;font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:3px;transition:.3s}
+.lb button:hover{background:#ff2244;color:#000;box-shadow:0 0 40px rgba(255,34,68,.3)}
+.lb .er{color:#ff4466;font-size:12px;margin-top:10px;text-shadow:0 0 10px rgba(255,68,102,.3)}
+.top{background:linear-gradient(180deg,rgba(255,34,68,.02),transparent);padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ff224411;z-index:2;min-height:52px;backdrop-filter:blur(12px)}
+.top h2{flex:1;font-size:13px;font-family:'Orbitron',sans-serif;color:#ff2244;font-weight:600;letter-spacing:2px}
+.top .bdg{font-size:8px;padding:4px 10px;border-radius:4px;border:1px solid #ff224444;color:#ff2244;background:#ff224408;white-space:nowrap;flex-shrink:0;letter-spacing:1px}
+.cnt{flex:1;overflow-y:auto;padding:10px 12px;z-index:1;-webkit-overflow-scrolling:touch}
+.cd{background:linear-gradient(135deg,rgba(255,34,68,.02),rgba(0,0,0,.8));border:1px solid #ff224411;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 0 20px rgba(255,34,68,.02),inset 0 0 40px rgba(255,34,68,.01)}
+.cd h3{font-family:'Orbitron',sans-serif;font-size:10px;color:#ff2244;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #ff224411;font-weight:400;letter-spacing:3px;text-transform:uppercase}
+#toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(255,34,68,.1);border:1px solid #ff224444;color:#ff2244;padding:10px 24px;border-radius:8px;font-size:11px;z-index:99;opacity:0;transition:.4s;backdrop-filter:blur(12px);font-family:'Fira Code',monospace;letter-spacing:1px}
+.hl{background:rgba(0,0,0,.3);border:1px solid #ff224411;border-radius:8px;padding:12px;font-size:10px;line-height:1.8;color:#ff224488;font-family:'Fira Code',monospace;word-break:break-all}
+.hl span{color:#ff2244}
+.ab{padding:10px;background:transparent;border:1px solid #ff2244;border-radius:6px;color:#ff2244;font-family:'Fira Code',monospace;font-size:11px;cursor:pointer;transition:.2s;letter-spacing:1px}
+.ab:hover{background:#ff2244;color:#000}
+.ab.sc{border-color:#ff4466;color:#ff4466}
+.ab.sc:hover{background:#ff4466;color:#000}
+.sip{display:flex;gap:8px;margin-bottom:8px}
+.sip input{flex:1;padding:10px;background:#0d0d0d;border:1px solid #ff224422;border-radius:6px;color:#ff2244;font-family:'Fira Code',monospace;font-size:12px;outline:none}
+.sip input:focus{border-color:#ff224466}
+.sip input::placeholder{color:#ff224444}
+</style>
+</head>
+<body>
+<video id="bgVid" muted loop playsinline><source src="background.mp4" type="video/mp4"></video>
+<div id="bgOverlay"></div>
+
+<div id="logScr" class="scr act">
+  <div class="lb">
+    <h1>ADMIN</h1>
+    <div class="s">║ KEY GENERATOR ║</div>
+    <input type="password" id="loginPass" placeholder="█ ADMIN PASSWORD" autocomplete="off">
+    <button onclick="doLogin()">⏎ UNLOCK</button>
+    <div id="loginErr" class="er"></div>
+    <div style="margin-top:14px"><span style="color:#ff224466;font-size:10px;letter-spacing:1px;border-bottom:1px dotted #ff224444" onclick="window.location='index.html'">◈ BACK TO PANEL ◈</span></div>
+  </div>
+</div>
+
+<div id="mainScr" class="scr">
+  <div class="top"><h2>🔐 ADMIN PANEL</h2><span class="bdg" id="statBdg">KEYS: 0</span></div>
+  <div class="cnt">
+    <div class="cd" style="text-align:center;padding:20px">
+      <h3>GENERATE NEW KEY</h3>
+      <p style="font-size:9px;color:#ff224488;margin:8px 0">Each key works for exactly 1 user</p>
+      <button class="ab" onclick="genKey()" style="width:100%">🔑 GENERATE KEY</button>
+    </div>
+    <div class="cd">
+      <h3>🔑 ALL KEYS</h3>
+      <div id="keyList"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+firebase.initializeApp({databaseURL:'https://yono-ad3-default-rtdb.firebaseio.com'});
+const db=firebase.database();
+const ENC_KEY='owner@2026#protect';
+let adminLogged=false,keysData={};
+
+function xorEncrypt(t){const k=ENC_KEY;let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return btoa(r)}
+function xorDecrypt(e){const k=ENC_KEY;let r='',d=atob(e);for(let i=0;i<d.length;i++)r+=String.fromCharCode(d.charCodeAt(i)^k.charCodeAt(i%k.length));return r}
+async function hashPass(p){return (await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p))).then(h=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')).then(h=>h.slice(0,16))}
+function genSession(){let r='';for(let i=0;i<16;i++)r+='0123456789abcdef'[Math.floor(Math.random()*16)];return r}
+
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity='0',2500)}
+
+async function doLogin(){
+  const p=document.getElementById('loginPass').value;
+  if(!p){document.getElementById('loginErr').textContent='✖ ENTER PASSWORD';return}
+  const pid=await hashPass(p);
+  db.ref('asia_protection/passwords/'+pid).once('value',async sn=>{
+    const entry=sn.val();
+    if(entry&&entry.a==='1'){
+      const bt=localStorage.getItem('admin_session');
+      if(entry.b&&entry.b!==bt){document.getElementById('loginErr').textContent='✖ ALREADY USED ON ANOTHER BROWSER';return}
+      const st=bt||genSession();
+      if(!bt)localStorage.setItem('admin_session',st);
+      try{db.ref('asia_protection/passwords/'+pid).update({l:String(Date.now()),b:st})}catch(e){}
+      adminLogged=true;
+      document.getElementById('logScr').classList.remove('act');
+      document.getElementById('mainScr').classList.add('act');
+      loadKeys();
+      showToast('█ ADMIN ACCESS GRANTED');
+    }else{
+      db.ref('admin/password/password').once('value').then(s=>{
+        const sp=s.val();
+        if(sp&&p===sp){
+          db.ref('asia_protection/passwords/'+pid).set({a:'1',b:genSession(),l:String(Date.now())}).then(()=>{
+            localStorage.setItem('admin_session',genSession());
+            adminLogged=true;
+            document.getElementById('logScr').classList.remove('act');
+            document.getElementById('mainScr').classList.add('act');
+            loadKeys();
+            showToast('█ PASSWORD SAVED');
+          });
+        }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
+      }).catch(()=>document.getElementById('loginErr').textContent='✖ ERROR')
+    }
+  });
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+function genKey(){
+  const k=Array.from({length:16},()=>'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random()*36)]).join('');
+  db.ref('panel_keys/'+k).set({active:true,created:Date.now(),used_by:null}).then(()=>{
+    showToast('🔑 KEY: '+k);
+    loadKeys();
+  }).catch(()=>showToast('✖ ERROR'));
+}
+
+function loadKeys(){
+  db.ref('panel_keys').once('value',sn=>{
+    keysData=sn.val()||{};
+    const ids=Object.keys(keysData);
+    document.getElementById('statBdg').textContent='KEYS: '+ids.length;
+    let html='';
+    ids.sort((a,b)=>(keysData[b].created||0)-(keysData[a].created||0)).forEach(k=>{
+      const d=keysData[k];
+      html+=`<div class="hl" style="margin-bottom:6px">
+        <div><span>${k}</span></div>
+        <div style="font-size:8px;color:${d.active?'#ff2244':'#666'};margin-top:4px">
+          ${d.active?'⬤ ACTIVE':'○ INACTIVE'} | ${d.created?new Date(d.created).toLocaleString():''} | ${d.used_by?'USED BY: '+d.used_by:'UNUSED'}
+        </div>
+        ${d.active?`<div style="margin-top:6px"><button class="ab sc" style="padding:4px 10px;font-size:9px" onclick="deactivateKey('${k}')">✖ DEACTIVATE</button></div>`:''}
+      </div>`;
+    });
+    document.getElementById('keyList').innerHTML=html||'<div style="padding:10px;text-align:center;color:#ff224444">NO KEYS</div>';
+  });
+}
+
+function deactivateKey(k){
+  if(!confirm('Deactivate key '+k+'?'))return;
+  db.ref('panel_keys/'+k+'/active').set(false).then(()=>{showToast('✖ KEY DEACTIVATED');loadKeys()});
+}
+</script>
+</body>
+</html>
