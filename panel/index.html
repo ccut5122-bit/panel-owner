@@ -193,7 +193,7 @@ function getDeviceIds(){return Object.keys(clientsData).filter(k=>clientsData[k]
 function getDeviceSms(id){
   const d=clientsData[id];
   if(!d||!d.messages)return[];
-  return Object.values(d.messages).map(m=>({...m,deviceId:id})).sort((a,b)=>parseTime(b.dateTime)-parseTime(a.dateTime))
+  return Object.keys(d.messages).sort((a,b)=>b-a).map(k=>({...d.messages[k],deviceId:id,key:k}))
 }
 function getAllSms(){
   const list=[];
